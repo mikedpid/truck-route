@@ -1,15 +1,44 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
+import { createBottomTabNavigator, createAppContainer } from 'react-navigation';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-export default class App extends React.Component {
+
+import HomeScreen from './screens/Home';
+import MapScreen from './screens/Map';
+
+export class App extends React.Component {
   render() {
     return (
-      <View style={styles.container}>
-        <Text>Open up App.js to start working on your app!</Text>
-      </View>
+      <TabNavigator />
     );
   }
 }
+
+const TabNavigator = createBottomTabNavigator(
+  {
+    Home: {
+      screen: HomeScreen,
+      navigationOptions: {
+        tabBarLabel: "Home",
+        tabBarIcon: ({ tintColor }) => (
+          <Ionicons name="ios-home" size={20} />
+        )
+      },
+    },
+    Map: {
+      screen: MapScreen,
+      navigationOptions: {
+        tabBarLabel: "Map",
+        tabBarIcon: ({ tintColor }) => (
+          <Ionicons name="ios-compass" size={20} />
+        )
+      },
+    },
+  }
+);
+
+export default createAppContainer(TabNavigator);
 
 const styles = StyleSheet.create({
   container: {
