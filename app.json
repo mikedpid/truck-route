@@ -24,9 +24,6 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": ""
-      },
       "infoPlist": {
         "NSLocationAlwaysUsageDescription": "needs gps data.",
         "NSAppTransportSecurity": {
