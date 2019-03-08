@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Container, Header, Body, Title } from 'native-base';
+import RouteListItem from '../components/RouteListItem';
 
 class HomeScreen extends Component {
     render() {
@@ -11,9 +12,11 @@ class HomeScreen extends Component {
                         <Title>truckRoute</Title>
                     </Body>
                 </Header>
-                <View style={{ flex: 1, top: '2%', marginLeft: 5, marginRight: 5 }}>
-                    <Text style={{ marginBottom: 10 }}>Home page</Text>
-                </View>
+                <ScrollView style={{ flex: 1, top: '2%', marginLeft: 5, marginRight: 5 }}>
+                    <RouteListItem />
+                    <RouteListItem />
+                    <RouteListItem />
+                </ScrollView>
             </Container>
         )
     }
