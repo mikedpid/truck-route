@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Container, Content, Header, Body, Title, Icon } from 'native-base';
 import { MapView, Polyline } from 'expo';
 import axios from 'axios';
+import polyline from '@mapbox/polyline';
 
 class MapScreen extends Component {
 
@@ -31,7 +32,7 @@ class MapScreen extends Component {
                 latitude: 0,
                 longitude: 0
             },
-            coordPoints: []
+            polylines: []
         };
         console.log(this.state)
     }
@@ -67,8 +68,8 @@ class MapScreen extends Component {
                     }
                 })
                 this.getRoute(this.state.userLocation, 123).then((res) => {
-                    console.log(res.pointCoords)
-                    console.log(res.pointCoords.length)
+                    // console.log(res.pointCoords)
+                    // console.log(res.pointCoords.length)
                 })
                 console.log(this.state)
             }
@@ -79,11 +80,11 @@ class MapScreen extends Component {
         let polyline = null
         let originMarker = null
         let destinationMarker = null
-        if (this.state.coordPoints.length > 1) {
-            // this.map.fitToCoordinates(this.state.coordPoints)
-            polyline = <MapView.Polyline coordinates={this.state.coordPoints} strokeColor="#FF0000" strokeWidth={6} />
-            originMarker = <MapView.Marker coordinate={this.state.coordPoints[0]} pinColor={'#000000'} />
-            destinationMarker = <MapView.Marker coordinate={this.state.coordPoints[this.state.coordPoints.length -1]} />
+        if (this.state.polylines.length > 1) {
+            // this.map.fitToCoordinates(this.state.polylines)
+            polyline = <MapView.Polyline coordinates={this.state.polylines} strokeColor="#FF0000" strokeWidth={6} />
+            originMarker = <MapView.Marker coordinate={this.state.polylines[0]} pinColor={'#000000'} />
+            destinationMarker = <MapView.Marker coordinate={this.state.polylines[this.state.polylines.length -1]} />
         }
 
         return (
@@ -118,12 +119,19 @@ class MapScreen extends Component {
         })
     }
 
-    getRoute = (origin, destination) => {
+    getRoute = (origin, destination, truckHeight = 2, truckWidth = 2, truckLength = 5) => {
         return new Promise((resolve, reject) => {
             origin.longitude = 47.083941
             origin.latitude = 21.885
-            axios.get(`http://192.168.1.3:3000/api/v1/truck-route/${origin.longitude},${origin.latitude}/45.6637,25.512863`).then((res) => {
-                this.state.coordPoints = res.data.pointCoords
+            axios.get(`http://192.168.1.3:3000/api/v1/truck-route/${origin.longitude},${origin.latitude}/45.6637,25.512863?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
+            .then((res) => {
+                let latLngArray = polyline.decode(res.data.polylines).map(arr => {
+                    return { 'latitude': arr[0], 'longitude': arr[1] }
+                })
+                this.setState({
+                    polylines: latLngArray
+                })
+
                 resolve(res.data)
             }).catch(err => { console.log (err)})
         })
