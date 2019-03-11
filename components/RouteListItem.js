@@ -6,7 +6,15 @@ class RouteListItem extends PureComponent {
     _handlePress = async () => {
         // const res = await this.props.fetchDetails(this.props.place_id)
         // console.log('result', res)
-        this.props.navigation.navigate('Map')
+        this.props.navigation.navigate('Map', {'origin': this.props.origin, 'destination': this.props.destination})
+    }
+
+    constructor(props) {
+        super(props)
+        // this.state = {
+        //     origin: props.origin,
+        //     destination: props.destination
+        // }
     }
 
     render() {

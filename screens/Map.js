@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { Container, Content, Header, Body, Title, Icon } from 'native-base';
 import { MapView, Polyline } from 'expo';
 import axios from 'axios';
@@ -9,10 +9,11 @@ class MapScreen extends Component {
 
     constructor(props) {
         super(props)
+        
         this.state = {
             region: {
-                latitude: 1,
-                longitude: 1,
+                latitude: 45.94,
+                longitude: 24.96,
                 latitudeDelta: 0.003,
                 longitudeDelta: 0.003,
             },
@@ -20,35 +21,27 @@ class MapScreen extends Component {
                 latitude: 1,
                 longitude: 1,
             },
-            startPoint: {
-                latitude: 0,
-                longitude: 0
-            },
-            endPoint: {
-                latitude: 0,
-                longitude: 0
-            },
+            startPoint: props.navigation.getParam('origin') || { 'latitude': null, 'longitude': null },
+            endPoint: props.navigation.getParam('destination') || { 'latitude': null, 'longitude': null },
             userLocation: {
-                latitude: 0,
-                longitude: 0
+                latitude: null,
+                longitude: null
             },
             polylines: []
         };
-        console.log(this.state)
     }
 
     onRegionChange = (region) => {
-        this.setState({
-            region,
-            marker: {
-                latitude: region.latitude,
-                longitude: region.longitude,
-            }
-        });
+        // this.setState({
+        //     region,
+        //     marker: {
+        //         latitude: region.latitude,
+        //         longitude: region.longitude,
+        //     }
+        // });
     }
 
     componentDidMount() {
-        
         return this.getUserLocation().then((position) => {
             if(position) {
                 this.setState({
@@ -67,13 +60,32 @@ class MapScreen extends Component {
                         longitude: position.coords.longitude
                     }
                 })
-                this.getRoute(this.state.userLocation, 123).then((res) => {
-                    // console.log(res.pointCoords)
-                    // console.log(res.pointCoords.length)
-                })
-                console.log(this.state)
+                if (this.state.startPoint.latitude && this.state.endPoint.latitude) {
+                    this.getRoute(this.state.startPoint, this.state.endPoint).then((res) => {
+                        this.map.fitToElements(true)
+                        console.log(res.pointCoords.length)
+                    })
+                }
             }
         })
+    }
+
+    componentWillReceiveProps(nextProps) {
+        console.log(nextProps)
+        const origin = nextProps.navigation.getParam('origin')
+        const destination = nextProps.navigation.getParam('destination')
+        if(origin && destination) {
+            console.log(origin, destination)
+            this.getRoute(origin, destination).then(() => this.map.fitToElements(true))
+            this.setState({
+                startPoint: { 'latitude': origin.latitude, 'longitude': origin.longitude },
+                endPoint: { 'latitude': destination.latitude, 'longitude': destination.longitude }
+            })
+        }
+    }
+
+    componentDidUpdate() {
+        console.log('componentDidUpdate')
     }
 
     render() {
@@ -81,6 +93,7 @@ class MapScreen extends Component {
         let originMarker = null
         let destinationMarker = null
         if (this.state.polylines.length > 1) {
+            console.log('polylineeee')
             // this.map.fitToCoordinates(this.state.polylines)
             polyline = <MapView.Polyline coordinates={this.state.polylines} strokeColor="#FF0000" strokeWidth={6} />
             originMarker = <MapView.Marker coordinate={this.state.polylines[0]} pinColor={'#000000'} />
@@ -97,7 +110,7 @@ class MapScreen extends Component {
                 <MapView
                     ref={map => { this.map = map; } }
                     onRegionChangeComplete={this.onRegionChange}
-                    initialRegion={this.state.region}
+                    // initialRegion={this.state.region}
                     region={this.state.region}
                     provider='google'
                     style={{ flex: 1 }}
@@ -120,11 +133,16 @@ class MapScreen extends Component {
     }
 
     getRoute = (origin, destination, truckHeight = 2, truckWidth = 2, truckLength = 5) => {
+        console.log('getRoute')
         return new Promise((resolve, reject) => {
-            origin.longitude = 47.083941
-            origin.latitude = 21.885
-            axios.get(`http://192.168.1.3:3000/api/v1/truck-route/${origin.longitude},${origin.latitude}/45.6637,25.512863?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
+            // origin.longitude = 47.083941
+            // origin.latitude = 21.885
+            // destination.longitude = 45.6637
+            // destination.latitude = 25.51
+            console.log(origin, destination)
+            axios.get(`http://192.168.1.4:3000/api/v1/truck-route/${origin.longitude},${origin.latitude}/${destination.longitude},${destination.latitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
             .then((res) => {
+                if(res.data.polylines == undefined) { return Alert.alert('Error', 'Invalid route') }
                 let latLngArray = polyline.decode(res.data.polylines).map(arr => {
                     return { 'latitude': arr[0], 'longitude': arr[1] }
                 })
