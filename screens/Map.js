@@ -1,9 +1,15 @@
 import React, { Component } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Dimensions } from 'react-native';
 import { Container, Content, Header, Body, Title, Icon } from 'native-base';
 import { MapView, Polyline } from 'expo';
 import axios from 'axios';
 import polyline from '@mapbox/polyline';
+import geolib from 'geolib';
+
+const {width, height} = Dimensions.get('window')
+const ASPECT_RATIO = width / height
+const LATITUDE_DELTA = 0.003
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO
 
 class MapScreen extends Component {
 
@@ -14,8 +20,8 @@ class MapScreen extends Component {
             region: {
                 latitude: 45.94,
                 longitude: 24.96,
-                latitudeDelta: 0.003,
-                longitudeDelta: 0.003,
+                latitudeDelta: LATITUDE_DELTA,//0.003,
+                longitudeDelta: LONGITUDE_DELTA//0.003,
             },
             marker: {
                 latitude: 1,
@@ -27,8 +33,11 @@ class MapScreen extends Component {
                 latitude: null,
                 longitude: null
             },
-            polylines: []
+            polylines: [],
+            routeDistance: 0
         };
+
+        this.watchID = null
     }
 
     onRegionChange = (region) => {
@@ -48,13 +57,13 @@ class MapScreen extends Component {
                     region: {
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude,
-                        latitudeDelta: 0.003,
-                        longitudeDelta: 0.003,
+                        latitudeDelta: LATITUDE_DELTA,
+                        longitudeDelta: LONGITUDE_DELTA,
                     },
-                    marker: {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
-                    },
+                    // marker: {
+                    //     latitude: position.coords.latitude,
+                    //     longitude: position.coords.longitude
+                    // },
                     userLocation: {
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude
@@ -62,21 +71,26 @@ class MapScreen extends Component {
                 })
                 if (this.state.startPoint.latitude && this.state.endPoint.latitude) {
                     this.getRoute(this.state.startPoint, this.state.endPoint).then((res) => {
-                        this.map.fitToElements(true)
+                        // this.map.fitToElements(true)
                         console.log(res.pointCoords.length)
+                        this.watchPosition()
                     })
                 }
+
             }
         })
     }
 
+    componentWillUnmount() {
+        navigator.geolocation.clearWatch(this.watchID)
+    }
+
     componentWillReceiveProps(nextProps) {
-        console.log(nextProps)
         const origin = nextProps.navigation.getParam('origin')
         const destination = nextProps.navigation.getParam('destination')
         if(origin && destination) {
             console.log(origin, destination)
-            this.getRoute(origin, destination).then(() => this.map.fitToElements(true))
+            this.getRoute(origin, destination) //.then(() => this.map.fitToElements(true))
             this.setState({
                 startPoint: { 'latitude': origin.latitude, 'longitude': origin.longitude },
                 endPoint: { 'latitude': destination.latitude, 'longitude': destination.longitude }
@@ -108,6 +122,7 @@ class MapScreen extends Component {
                     </Body>
                 </Header>
                 <MapView
+                    style={styles.map}
                     ref={map => { this.map = map; } }
                     onRegionChangeComplete={this.onRegionChange}
                     // initialRegion={this.state.region}
@@ -122,34 +137,61 @@ class MapScreen extends Component {
                     {originMarker}
                     {destinationMarker}
                 </MapView>
+                <TouchableOpacity style={styles.overlay}>
+                    {this.state.routeDistance > 0 && 
+                        <Text>Distance: {Math.floor(this.state.routeDistance / 1000)}km</Text>
+                    }
+                    <Text>Speed: </Text>
+                </TouchableOpacity>
             </Container>
         )
     }
 
     getUserLocation = () => {
         return new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(position => resolve(position), err => reject(err));
+            navigator.geolocation.getCurrentPosition(position => resolve(position), err => reject(err), {enableHighAccuracy: true});
         })
+    }
+
+    watchPosition = () => {
+        this.watchID = navigator.geolocation.watchPosition(
+            (position) => {
+                console.log("watchPosition Success", position.coords);
+                // this.map.animateToRegion({'latitude': position.coords.latitude, 'longitude': position.coords.longitude}, 5000);
+                this.setState({
+                    region: { 'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': 0.003, 'longitudeDelta': 0.003 },
+                    userLocation: { 'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': 0.003, 'longitudeDelta': 0.003 }
+                })
+                // console.log('geolib', geolib.isPointInLine(this.state.userLocation, this.state.userLocation, this.state.endPoint))
+
+            },
+            (error) => {
+               console.log("Error dectecting your location");
+            },
+            { enableHighAccuracy: true, timeout: 20000, distanceFilter: 1 }
+        );
     }
 
     getRoute = (origin, destination, truckHeight = 2, truckWidth = 2, truckLength = 5) => {
         console.log('getRoute')
         return new Promise((resolve, reject) => {
-            // origin.longitude = 47.083941
-            // origin.latitude = 21.885
+            // origin.longitude = 47.033941
+            // origin.latitude = 21.9495
             // destination.longitude = 45.6637
             // destination.latitude = 25.51
-            console.log(origin, destination)
-            axios.get(`http://192.168.1.4:3000/api/v1/truck-route/${origin.longitude},${origin.latitude}/${destination.longitude},${destination.latitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
+            // console.log(origin, destination)
+            // console.log('***', this.state.userLocation)
+            axios.get(`http://79.117.80.93:3000/api/v1/truck-route/${this.state.userLocation.latitude},${this.state.userLocation.longitude}/${destination.longitude},${destination.latitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
             .then((res) => {
                 if(res.data.polylines == undefined) { return Alert.alert('Error', 'Invalid route') }
                 let latLngArray = polyline.decode(res.data.polylines).map(arr => {
                     return { 'latitude': arr[0], 'longitude': arr[1] }
                 })
                 this.setState({
-                    polylines: latLngArray
+                    polylines: latLngArray,
+                    routeDistance: res.data.distance
                 })
-
+                // console.log('geolib', geolib.getPathLength(this.state.polylines))
                 resolve(res.data)
             }).catch(err => { console.log (err)})
         })
@@ -164,5 +206,13 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center'
-    }
+    },
+    map: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    overlay: {
+        position: 'absolute',
+        bottom: 50,
+        backgroundColor: 'rgba(255, 255, 255, 1)',
+    },
 })

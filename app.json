@@ -10,7 +10,7 @@
     ],
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.ico",
+    "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -33,6 +33,12 @@
           "NSExceptionAllowsInsecureHTTPLoads": true
         }
       }
+    },
+    "android": {
+      "package": "com.company.truckroute",
+      "permissions": [
+        "LOCATION"
+      ]
     }
   }
 }
