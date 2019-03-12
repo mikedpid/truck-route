@@ -155,6 +155,19 @@ class MapScreen extends Component {
     }
 
     watchPosition = () => {
+        // let locationInterval = setInterval(() => {
+        //     navigator.geolocation.getCurrentPosition(position => {
+        //         console.log('Current position', position.coords)
+        //         this.setState({
+        //             region: {'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': LATITUDE_DELTA, 'longitudeDelta': LONGITUDE_DELTA},
+        //             userLocation: {'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': LATITUDE_DELTA, 'longitudeDelta': LONGITUDE_DELTA},
+        //         })
+
+        //         if(!this.checkIfOnRoute(position.coords)) {
+        //             this.getRoute(position.coords, this.state.endPoint)    
+        //         }
+        //     })
+        // }, 15000)
         this.watchID = navigator.geolocation.watchPosition(
             (position) => {
                 console.log("watchPosition Success", position.coords);
@@ -163,14 +176,27 @@ class MapScreen extends Component {
                     region: { 'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': 0.003, 'longitudeDelta': 0.003 },
                     userLocation: { 'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': 0.003, 'longitudeDelta': 0.003 }
                 })
-                // console.log('geolib', geolib.isPointInLine(this.state.userLocation, this.state.userLocation, this.state.endPoint))
-
+                console.log('geolib', this.checkIfOnRoute(this.state.userLocation))
+                if(!this.checkIfOnRoute(this.state.userLocation)) {
+                    this.getRoute(this.state.userLocation, this.state.endPoint)
+                }
             },
             (error) => {
                console.log("Error dectecting your location");
             },
             { enableHighAccuracy: true, timeout: 20000, distanceFilter: 1 }
         );
+    }
+
+    checkIfOnRoute = (userLocation) => {
+        let status = false
+        for(let point of this.state.polylines) {
+            if(geolib.isPointInCircle(userLocation, point, 50)) {
+                status = true
+                break;
+            }
+        }
+        return status
     }
 
     getRoute = (origin, destination, truckHeight = 2, truckWidth = 2, truckLength = 5) => {
@@ -180,9 +206,7 @@ class MapScreen extends Component {
             // origin.latitude = 21.9495
             // destination.longitude = 45.6637
             // destination.latitude = 25.51
-            // console.log(origin, destination)
-            // console.log('***', this.state.userLocation)
-            axios.get(`http://79.117.80.93:3000/api/v1/truck-route/${this.state.userLocation.latitude},${this.state.userLocation.longitude}/${destination.longitude},${destination.latitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
+            axios.get(`http://192.168.0.113:3000/api/v1/truck-route/${this.state.userLocation.latitude},${this.state.userLocation.longitude}/${destination.longitude},${destination.latitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
             .then((res) => {
                 if(res.data.polylines == undefined) { return Alert.alert('Error', 'Invalid route') }
                 let latLngArray = polyline.decode(res.data.polylines).map(arr => {
@@ -190,7 +214,8 @@ class MapScreen extends Component {
                 })
                 this.setState({
                     polylines: latLngArray,
-                    routeDistance: res.data.distance
+                    routeDistance: res.data.distance,
+                    startPoint: this.state.userLocation
                 })
                 // console.log('geolib', geolib.getPathLength(this.state.polylines))
                 resolve(res.data)
