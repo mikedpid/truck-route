@@ -10,6 +10,7 @@ const {width, height} = Dimensions.get('window')
 const ASPECT_RATIO = width / height
 const LATITUDE_DELTA = 0.003
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO
+const POSITION_DISTANCE_FILTER = 1
 
 class MapScreen extends Component {
 
@@ -23,10 +24,6 @@ class MapScreen extends Component {
                 latitudeDelta: LATITUDE_DELTA,//0.003,
                 longitudeDelta: LONGITUDE_DELTA//0.003,
             },
-            marker: {
-                latitude: 1,
-                longitude: 1,
-            },
             startPoint: props.navigation.getParam('origin') || { 'latitude': null, 'longitude': null },
             endPoint: props.navigation.getParam('destination') || { 'latitude': null, 'longitude': null },
             userLocation: {
@@ -35,8 +32,11 @@ class MapScreen extends Component {
             },
             polylines: [],
             routeDistance: 0,
+            cruiseSpeed: 0,
+            avgSpeed: 0
         };
         
+        this.speed = {'lowest': 0, 'highest': 0}
         this.offTheRoute = false,
         this.timesRouteRecalculated = 0,
         this.lastRouteCoordIndex = 0
@@ -128,8 +128,15 @@ class MapScreen extends Component {
                 </MapView>
 
                 {
-                this.timesRouteRecalculated > 5 && this.offTheRoute &&
-                    <Button light={true} block={true} rounded={true} style={styles.recalculateBtn} onPress={() => { this.getRoute(this.state.userLocation, this.state.endPoint) }}>
+                this.timesRouteRecalculated > 5 && this.offTheRoute && this.state.routeDistance > 0 &&
+                    <Button
+                        light={true}
+                        block={true}
+                        rounded={true}
+                        style={styles.recalculateBtn}
+                        onPress={
+                            () => { this.getRoute(this.state.userLocation, this.state.endPoint) }
+                        }>
                         <Text>Recalculate route</Text>
                     </Button>
                 }
@@ -138,7 +145,9 @@ class MapScreen extends Component {
                     {this.state.routeDistance > 0 && 
                         <Text>Distance: {Math.floor(this.state.routeDistance / 1000)}km</Text>
                     }
-                    <Text>Speed: </Text>
+                    {this.state.routeDistance > 0 &&
+                        <Text>Speed: {(this.state.cruiseSpeed > 0) ? this.state.cruiseSpeed : 0} km/h</Text>
+                    }
                 </TouchableOpacity>
             </Container>
         )
@@ -166,7 +175,9 @@ class MapScreen extends Component {
         // }, 15000)
         this.watchID = navigator.geolocation.watchPosition(
             (position) => {
-                console.log("watchPosition Success", position.coords);
+                console.log('watchPosition Success', position.coords);
+                console.log('speed', position.speed)
+                if(position.speed) { this.updateSpeedValues(position.speed) }
                 // this.map.animateToRegion({'latitude': position.coords.latitude, 'longitude': position.coords.longitude}, 5000);
                 this.setState({
                     region: {
@@ -180,7 +191,8 @@ class MapScreen extends Component {
                         'longitude': position.coords.longitude,
                         'latitudeDelta': LATITUDE_DELTA,
                         'longitudeDelta': LONGITUDE_DELTA
-                    }
+                    },
+                    cruiseSpeed: position.speed
                 })
                 console.log('geolib', this.checkIfOnRoute(this.state.userLocation))
                 if(!this.checkIfOnRoute(this.state.userLocation)) { //if route re-calculated more than 5 times, stop the auto recalculation
@@ -191,10 +203,31 @@ class MapScreen extends Component {
                 }
             },
             (error) => {
-               console.log("Error dectecting your location");
+               console.log("Error detecting your location");
+               console.log(error)
             },
-            { enableHighAccuracy: true, timeout: 20000, distanceFilter: 1 }
+            { enableHighAccuracy: true, timeout: 20000, distanceFilter: POSITION_DISTANCE_FILTER }
         );
+    }
+
+    updateSpeedValues = (speed) => {
+        speed = (speed < 0) ? 0 : speed
+        if(this.speed.lowest > speed) {
+            this.speed.lowest = speed
+            this.calculateAvgSpeed()
+        } else if(this.speed.highest < speed) {
+            this.speed.highest = speed
+            this.calculateAvgSpeed()
+        }
+    }
+
+    calculateAvgSpeed = () => {
+        let sum = this.speed.lowest + this.speed.highest
+        if(sum > 0) {
+            this.setState({
+                avgSpeed: sum/2
+            })
+        }
     }
 
     checkIfOnRoute = (userLocation) => {
@@ -218,7 +251,9 @@ class MapScreen extends Component {
             // destination.latitude = 25.51
             axios.get(`http://192.168.0.113:3000/api/v1/truck-route/${this.state.userLocation.latitude},${this.state.userLocation.longitude}/${destination.longitude},${destination.latitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
             .then((res) => {
-                if(res.data.polylines == undefined) { return Alert.alert('Error', 'Invalid route') }
+                if(res.data.polylines == undefined) {
+                    return Alert.alert('Error', 'Invalid route')
+                }
                 let latLngArray = polyline.decode(res.data.polylines).map(arr => {
                     return { 'latitude': arr[0], 'longitude': arr[1] }
                 })
