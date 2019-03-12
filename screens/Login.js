@@ -1,9 +1,7 @@
 import React, { Component } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Alert, AsyncStorage } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
 import { Container, Header, Body, Title } from 'native-base';
 import LoginForm from '../components/LoginForm';
-import axios from 'axios';
-import config from '../config';
 import { loginWithAuth0 } from '../app/auth'
 
 export default ({ navigation }) => {
@@ -33,13 +31,14 @@ export default ({ navigation }) => {
                            onChangePassword={onChangePassword}
                            onLogin={
                                 () => { 
-                                    loginWithAuth0(username, password).then((data) => { 
-                                        if(!data.profile) { 
-                                            return
-                                        }
-                                        console.log(data);
-                                        navigation.navigate('Home') 
-                                 })
+                                    loginWithAuth0(username, password)
+                                        .then((data) => {
+                                            navigation.navigate('Home') 
+                                        })
+                                        .catch(error => {
+                                            console.log(error.message)
+                                            Alert.alert('Oops', error.message)
+                                        })
                                 }
                             }>
                 </LoginForm>

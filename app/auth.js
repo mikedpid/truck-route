@@ -4,7 +4,9 @@ import config from "../config";
 
 
 export const loginWithAuth0 = (username, password) => {
-    if (username == '' || password == '') { return Alert.alert('Something went wrong', 'Both fields need to be filled') }
+    if (username == '' || password == '') {
+        return Promise.reject(new Error('Both fields need to be filled'))
+    }
     return axios.request({
         url: `${config.auth0_domain}/oauth/token`,
         method: 'POST',
@@ -33,12 +35,18 @@ export const loginWithAuth0 = (username, password) => {
                 })
         })
         .catch((error) => {
-            console.log(error)
-            Alert.alert('Something went wrong', 'Mismatched credentials')
+            if(error.message.includes('status code 403')) {
+                return Promise.reject(new Error('Mismatched credentials'))
+            } else {
+                return Promise.reject(new Error(error.message))
+            }
         })
 } 
 
 export const getProfile = (accessToken) => {
+    if (!accessToken) {
+        return Promise.reject(new Error('no access token provided'))
+    }
     return axios.request({
         url: `${config.auth0_domain}/userinfo`,
         method: 'GET',
