@@ -29,7 +29,20 @@ export default ({ navigation }) => {
                 </Body>
             </Header>
             <View style={styles.formContainer}>
-                <LoginForm onChangeUsername={onChangeUsername} onChangePassword={onChangePassword} onLogin={() => { loginWithAuth0(username, password).then((data) => { navigation.navigate('Home') }) }}></LoginForm>
+                <LoginForm onChangeUsername={onChangeUsername}
+                           onChangePassword={onChangePassword}
+                           onLogin={
+                                () => { 
+                                    loginWithAuth0(username, password).then((data) => { 
+                                        if(!data.profile) { 
+                                            return
+                                        }
+                                        console.log(data);
+                                        navigation.navigate('Home') 
+                                 })
+                                }
+                            }>
+                </LoginForm>
                 <TouchableOpacity onPress={redirectToRegister} >
                     <Text style={styles.textCenter}>Don't have an account? Register one right now!</Text>
                 </TouchableOpacity>

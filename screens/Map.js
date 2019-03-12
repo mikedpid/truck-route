@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Dimensions } from 'react-native';
 import { Container, Content, Header, Body, Title, Icon } from 'native-base';
-import { MapView, Polyline } from 'expo';
+import { MapView } from 'expo';
 import axios from 'axios';
 import polyline from '@mapbox/polyline';
 import geolib from 'geolib';
@@ -125,14 +125,15 @@ class MapScreen extends Component {
                     style={styles.map}
                     ref={map => { this.map = map; } }
                     onRegionChangeComplete={this.onRegionChange}
-                    // initialRegion={this.state.region}
                     region={this.state.region}
-                    provider='google'
+                    provider={null}
+                    mapType="none"
                     style={{ flex: 1 }}
                     showsUserLocation={true}
                     followsUserLocation={true}
-                    showsMyLocationButton={true}
+                    // showsMyLocationButton={true}
                 >
+                    <MapView.UrlTile urlTemplate="http://a.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png" />
                     {polyline}
                     {originMarker}
                     {destinationMarker}
