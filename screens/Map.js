@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Dimensions } from 'react-native';
-import { Container, Content, Header, Body, Title, Icon } from 'native-base';
+import { Container, Content, Header, Body, Title, Button } from 'native-base';
 import { MapView } from 'expo';
 import axios from 'axios';
 import polyline from '@mapbox/polyline';
@@ -34,20 +34,13 @@ class MapScreen extends Component {
                 longitude: null
             },
             polylines: [],
-            routeDistance: 0
+            routeDistance: 0,
         };
-
+        
+        this.offTheRoute = false,
+        this.timesRouteRecalculated = 0,
+        this.lastRouteCoordIndex = 0
         this.watchID = null
-    }
-
-    onRegionChange = (region) => {
-        // this.setState({
-        //     region,
-        //     marker: {
-        //         latitude: region.latitude,
-        //         longitude: region.longitude,
-        //     }
-        // });
     }
 
     componentDidMount() {
@@ -60,10 +53,6 @@ class MapScreen extends Component {
                         latitudeDelta: LATITUDE_DELTA,
                         longitudeDelta: LONGITUDE_DELTA,
                     },
-                    // marker: {
-                    //     latitude: position.coords.latitude,
-                    //     longitude: position.coords.longitude
-                    // },
                     userLocation: {
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude
@@ -124,7 +113,6 @@ class MapScreen extends Component {
                 <MapView
                     style={styles.map}
                     ref={map => { this.map = map; } }
-                    onRegionChangeComplete={this.onRegionChange}
                     region={this.state.region}
                     provider={null}
                     mapType="none"
@@ -138,6 +126,14 @@ class MapScreen extends Component {
                     {originMarker}
                     {destinationMarker}
                 </MapView>
+
+                {
+                this.timesRouteRecalculated > 5 && this.offTheRoute &&
+                    <Button light={true} block={true} rounded={true} style={styles.recalculateBtn} onPress={() => { this.getRoute(this.state.userLocation, this.state.endPoint) }}>
+                        <Text>Recalculate route</Text>
+                    </Button>
+                }
+
                 <TouchableOpacity style={styles.overlay}>
                     {this.state.routeDistance > 0 && 
                         <Text>Distance: {Math.floor(this.state.routeDistance / 1000)}km</Text>
@@ -173,12 +169,25 @@ class MapScreen extends Component {
                 console.log("watchPosition Success", position.coords);
                 // this.map.animateToRegion({'latitude': position.coords.latitude, 'longitude': position.coords.longitude}, 5000);
                 this.setState({
-                    region: { 'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': 0.003, 'longitudeDelta': 0.003 },
-                    userLocation: { 'latitude': position.coords.latitude, 'longitude': position.coords.longitude, 'latitudeDelta': 0.003, 'longitudeDelta': 0.003 }
+                    region: {
+                        'latitude': position.coords.latitude,
+                        'longitude': position.coords.longitude,
+                        'latitudeDelta': LATITUDE_DELTA,
+                        'longitudeDelta': LONGITUDE_DELTA
+                    },
+                    userLocation: {
+                        'latitude': position.coords.latitude,
+                        'longitude': position.coords.longitude,
+                        'latitudeDelta': LATITUDE_DELTA,
+                        'longitudeDelta': LONGITUDE_DELTA
+                    }
                 })
                 console.log('geolib', this.checkIfOnRoute(this.state.userLocation))
-                if(!this.checkIfOnRoute(this.state.userLocation)) {
-                    this.getRoute(this.state.userLocation, this.state.endPoint)
+                if(!this.checkIfOnRoute(this.state.userLocation)) { //if route re-calculated more than 5 times, stop the auto recalculation
+                    this.offTheRoute = true
+                    if(this.timesRouteRecalculated <= 5) {
+                        this.getRoute(this.state.userLocation, this.state.endPoint)
+                    }
                 }
             },
             (error) => {
@@ -190,8 +199,9 @@ class MapScreen extends Component {
 
     checkIfOnRoute = (userLocation) => {
         let status = false
-        for(let point of this.state.polylines) {
-            if(geolib.isPointInCircle(userLocation, point, 50)) {
+        for(let [index, point] of this.state.polylines.entries()) {
+            this.lastRouteCoordIndex = index
+            if(geolib.isPointInCircle(userLocation, point, 50)) { // check if user location is less than 50m away from the route
                 status = true
                 break;
             }
@@ -215,8 +225,9 @@ class MapScreen extends Component {
                 this.setState({
                     polylines: latLngArray,
                     routeDistance: res.data.distance,
-                    startPoint: this.state.userLocation
+                    startPoint: this.state.userLocation,
                 })
+                this.offTheRoute = false
                 // console.log('geolib', geolib.getPathLength(this.state.polylines))
                 resolve(res.data)
             }).catch(err => { console.log (err)})
@@ -241,4 +252,9 @@ const styles = StyleSheet.create({
         bottom: 50,
         backgroundColor: 'rgba(255, 255, 255, 1)',
     },
+    recalculateBtn: {
+        position: 'absolute',
+        bottom: 100,
+
+    }
 })
