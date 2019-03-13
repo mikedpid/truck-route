@@ -21,8 +21,8 @@ class MapScreen extends Component {
             region: {
                 latitude: 45.94,
                 longitude: 24.96,
-                latitudeDelta: LATITUDE_DELTA,//0.003,
-                longitudeDelta: LONGITUDE_DELTA//0.003,
+                latitudeDelta: LATITUDE_DELTA,
+                longitudeDelta: LONGITUDE_DELTA
             },
             startPoint: props.navigation.getParam('origin') || { 'latitude': null, 'longitude': null },
             endPoint: props.navigation.getParam('destination') || { 'latitude': null, 'longitude': null },
@@ -246,16 +246,11 @@ class MapScreen extends Component {
     }
 
     getRoute = (origin, destination, truckHeight = 2, truckWidth = 2, truckLength = 5) => {
-        console.log('getRoute')
         return new Promise((resolve, reject) => {
-            // origin.longitude = 47.033941
-            // origin.latitude = 21.9495
-            // destination.longitude = 45.6637
-            // destination.latitude = 25.51
             if(isNaN(origin.latitude) || isNaN(origin.longitude)) {
                 return Promise.reject(new Error('User location is undefined')).then(null, console.log)
             }
-            console.log('getRoute', origin)
+
             axios.get(`http://192.168.0.113:3000/api/v1/truck-route/${origin.latitude},${origin.longitude}/${destination.latitude},${destination.longitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
             .then((res) => {
                 if(res.data.polylines == undefined) {
@@ -271,7 +266,8 @@ class MapScreen extends Component {
                 })
                 this.offTheRoute = false
                 resolve(res.data)
-            }).catch(err => { console.log (err)})
+            })
+            .catch(err => { console.log (err)})
         })
     }
 
