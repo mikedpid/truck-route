@@ -3,18 +3,9 @@ import { View, Text } from 'react-native';
 import { isLoggedIn } from "../app/auth";
 
 class LoadingScreen extends React.Component {
-    performTimeConsumingTask = async () => {
-        return new Promise((resolve) =>
-            setTimeout(
-                () => { resolve('result') },
-                2000
-            )
-        )
-    }
 
     componentDidMount() {
         isLoggedIn().then((state) => {
-            console.log('loggedin', state)
             if (state) {
                 this.props.navigation.navigate('Home')
             } else {

@@ -11,7 +11,9 @@ const ASPECT_RATIO = width / height
 const LATITUDE_DELTA = 0.003
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO
 const POSITION_DISTANCE_FILTER = 1
-
+const API_URL = 'https://61b07eb4.ngrok.io' //'http://192.168.0.113:3000'
+const MAX_DISTANCE_UNTIL_OFFROUTE = 50 // meters
+const TILE_SERVER_URL = "http://192.168.99.100/styles/dark-matter/{z}/{x}/{y}.png" // old val: http://a.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png
 class MapScreen extends Component {
 
     constructor(props) {
@@ -98,7 +100,7 @@ class MapScreen extends Component {
         if (this.state.polylines.length > 1) {
             console.log('polylineeee')
             // this.map.fitToCoordinates(this.state.polylines)
-            polyline = <MapView.Polyline coordinates={this.state.polylines} strokeColor="#FF0000" strokeWidth={6} />
+            polyline = <MapView.Polyline coordinates={this.state.polylines} strokeColor="#FF0000" strokeWidth={6} zIndex={5} />
             originMarker = <MapView.Marker coordinate={this.state.polylines[0]} pinColor={'#000000'} />
             destinationMarker = <MapView.Marker coordinate={this.state.polylines[this.state.polylines.length -1]} />
         }
@@ -119,11 +121,12 @@ class MapScreen extends Component {
                     style={{ flex: 1 }}
                     showsUserLocation={true}
                     followsUserLocation={true}
+                    loadingEnabled
                     // showsMyLocationButton={true}
                 >
-                    <MapView.UrlTile urlTemplate="http://a.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png" />
+                    <MapView.UrlTile urlTemplate={TILE_SERVER_URL} zIndex={-1}/>
                     {polyline}
-                    {originMarker}
+                    {/* {originMarker} */}
                     {destinationMarker}
                 </MapView>
 
@@ -160,6 +163,10 @@ class MapScreen extends Component {
         return new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(position => resolve(position), err => reject(err), {enableHighAccuracy: true});
         })
+    }
+
+    incrementTimesRouteCalculated = () => {
+        this.setState(prevState => ({ count: prevState.count + 1 }))
     }
 
     watchPosition = () => {
@@ -201,6 +208,7 @@ class MapScreen extends Component {
                 if(!this.checkIfOnRoute(this.state.userLocation)) { //if route re-calculated more than 5 times, stop the auto recalculation
                     this.offTheRoute = true
                     if(this.timesRouteRecalculated <= 5) {
+                        this.incrementTimesRouteCalculated()
                         this.getRoute(this.state.userLocation, this.state.endPoint)
                     }
                 }
@@ -237,12 +245,16 @@ class MapScreen extends Component {
         let status = false
         for(let [index, point] of this.state.polylines.entries()) {
             this.lastRouteCoordIndex = index
-            if(geolib.isPointInCircle(userLocation, point, 50)) { // check if user location is less than 50m away from the route
+            if(geolib.isPointInCircle(userLocation, point, MAX_DISTANCE_UNTIL_OFFROUTE)) { // check if user location is less than 50m away from the route
                 status = true
                 break;
             }
         }
         return status
+    }
+
+    removePolylinesIfPassed = () => {
+        this.setState(prevState => ({ polylines: prevState.polylines.splice(0, this.lastRouteCoordIndex) }))
     }
 
     getRoute = (origin, destination, truckHeight = 2, truckWidth = 2, truckLength = 5) => {
@@ -251,7 +263,7 @@ class MapScreen extends Component {
                 return Promise.reject(new Error('User location is undefined')).then(null, console.log)
             }
 
-            axios.get(`http://192.168.0.113:3000/api/v1/truck-route/${origin.latitude},${origin.longitude}/${destination.latitude},${destination.longitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
+            axios.get(`${API_URL}/api/v1/truck-route/${origin.latitude},${origin.longitude}/${destination.latitude},${destination.longitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
             .then((res) => {
                 if(res.data.polylines == undefined) {
                     return Alert.alert('Error', 'Invalid route')
@@ -286,7 +298,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     map: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFillObject
     },
     overlay: {
         position: 'absolute',
