@@ -13,9 +13,9 @@ class HomeScreen extends Component {
                     </Body>
                 </Header>
                 <ScrollView style={{ flex: 1, top: '2%', marginLeft: 5, marginRight: 5 }}>
-                    <RouteListItem origin={{ latitude: 21.88, longitude: 47.08 }} destination={{ latitude: 25.51, longitude: 45.66 }} />
-                    <RouteListItem origin={{ latitude: 21.58, longitude: 45.10 }} destination={{ latitude: 25.51, longitude: 45.66 }} />
-                    <RouteListItem origin={{ latitude: 47.04, longitude: 21.91 }} destination={{ latitude: 25.51, longitude: 45.66 }} />
+                    <RouteListItem origin={{ latitude: 21.88, longitude: 47.08 }} destination={{ latitude: 45.66, longitude: 25.51 }} />
+                    <RouteListItem origin={{ latitude: 21.58, longitude: 45.10 }} destination={{ latitude: 45.66, longitude: 25.51 }} />
+                    <RouteListItem origin={{ latitude: 47.04, longitude: 21.91 }} destination={{ latitude: 45.66, longitude: 25.51 }} />
                 </ScrollView>
             </Container>
         )

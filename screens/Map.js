@@ -59,7 +59,7 @@ class MapScreen extends Component {
                     }
                 })
                 if (this.state.startPoint.latitude && this.state.endPoint.latitude) {
-                    this.getRoute(this.state.startPoint, this.state.endPoint).then((res) => {
+                    this.getRoute(this.state.userLocation, this.state.endPoint).then((res) => {
                         // this.map.fitToElements(true)
                         console.log(res.pointCoords.length)
                         this.watchPosition()
@@ -79,7 +79,7 @@ class MapScreen extends Component {
         const destination = nextProps.navigation.getParam('destination')
         if(origin && destination) {
             console.log(origin, destination)
-            this.getRoute(origin, destination) //.then(() => this.map.fitToElements(true))
+            this.getRoute(this.state.userLocation, destination) //.then(() => this.map.fitToElements(true))
             this.setState({
                 startPoint: { 'latitude': origin.latitude, 'longitude': origin.longitude },
                 endPoint: { 'latitude': destination.latitude, 'longitude': destination.longitude }
@@ -147,6 +147,9 @@ class MapScreen extends Component {
                     }
                     {this.state.routeDistance > 0 &&
                         <Text>Speed: {(this.state.cruiseSpeed > 0) ? this.state.cruiseSpeed : 0} km/h</Text>
+                    }
+                    {this.state.routeDistance > 0 &&
+                        <Text>Average speed: {(this.state.avgSpeed > 0) ? this.state.avgSpeed : 0} km/h</Text>
                     }
                 </TouchableOpacity>
             </Container>
@@ -249,7 +252,11 @@ class MapScreen extends Component {
             // origin.latitude = 21.9495
             // destination.longitude = 45.6637
             // destination.latitude = 25.51
-            axios.get(`http://192.168.0.113:3000/api/v1/truck-route/${this.state.userLocation.latitude},${this.state.userLocation.longitude}/${destination.longitude},${destination.latitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
+            if(isNaN(origin.latitude) || isNaN(origin.longitude)) {
+                return Promise.reject(new Error('User location is undefined')).then(null, console.log)
+            }
+            console.log('getRoute', origin)
+            axios.get(`http://192.168.0.113:3000/api/v1/truck-route/${origin.latitude},${origin.longitude}/${destination.latitude},${destination.longitude}?height=${truckHeight}&width=${truckWidth}&length=${truckLength}`)
             .then((res) => {
                 if(res.data.polylines == undefined) {
                     return Alert.alert('Error', 'Invalid route')
@@ -263,12 +270,15 @@ class MapScreen extends Component {
                     startPoint: this.state.userLocation,
                 })
                 this.offTheRoute = false
-                // console.log('geolib', geolib.getPathLength(this.state.polylines))
                 resolve(res.data)
             }).catch(err => { console.log (err)})
         })
     }
 
+    getRouteDistance = () => {
+        if(!this.state.polylines.length) { return 0 }
+        return geolib.getPathLength(this.state.polylines)
+    }
 }
 
 export default MapScreen;
