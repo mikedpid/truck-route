@@ -11,9 +11,9 @@ const ASPECT_RATIO = width / height
 const LATITUDE_DELTA = 0.003
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO
 const POSITION_DISTANCE_FILTER = 1
-const API_URL = 'https://61b07eb4.ngrok.io' //'http://192.168.0.113:3000'
+const API_URL = 'http://060bc603.ngrok.io' //'http://192.168.0.113:3000'
 const MAX_DISTANCE_UNTIL_OFFROUTE = 50 // meters
-const TILE_SERVER_URL = "http://192.168.99.100/styles/dark-matter/{z}/{x}/{y}.png" // old val: http://a.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png
+const TILE_SERVER_URL = "http://curvo.serveo.net/styles/dark-matter/{z}/{x}/{y}.png" // old val: http://a.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png
 class MapScreen extends Component {
 
     constructor(props) {
@@ -95,13 +95,12 @@ class MapScreen extends Component {
 
     render() {
         let polyline = null
-        let originMarker = null
         let destinationMarker = null
+
         if (this.state.polylines.length > 1) {
             console.log('polylineeee')
             // this.map.fitToCoordinates(this.state.polylines)
-            polyline = <MapView.Polyline coordinates={this.state.polylines} strokeColor="#FF0000" strokeWidth={6} zIndex={5} />
-            originMarker = <MapView.Marker coordinate={this.state.polylines[0]} pinColor={'#000000'} />
+            polyline = <MapView.Polyline coordinates={this.state.polylines} strokeColor="#FFDC35" strokeWidth={6} zIndex={5} />
             destinationMarker = <MapView.Marker coordinate={this.state.polylines[this.state.polylines.length -1]} />
         }
 
@@ -126,9 +125,20 @@ class MapScreen extends Component {
                 >
                     <MapView.UrlTile urlTemplate={TILE_SERVER_URL} zIndex={-1}/>
                     {polyline}
-                    {/* {originMarker} */}
                     {destinationMarker}
                 </MapView>
+
+                {(this.state.userLocation.latitude && this.state.userLocation.longitude) && 
+                    <Button
+                        primary={true}
+                        rounded={true}
+                        style={styles.recalculateBtn}
+                        onPress={
+                            () => { this.recenterOnUserPos() }
+                        }>
+                        <Text>Recenter</Text>
+                    </Button>
+                }
 
                 {
                 this.timesRouteRecalculated > 5 && this.offTheRoute && this.state.routeDistance > 0 &&
@@ -163,6 +173,13 @@ class MapScreen extends Component {
         return new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(position => resolve(position), err => reject(err), {enableHighAccuracy: true});
         })
+    }
+
+    recenterOnUserPos = () => {
+        const coords = this.state.userLocation
+        if(coords.latitude && coords.longitude) {
+            this.map.animateToCoordinate(coords, 1000)
+        }
     }
 
     incrementTimesRouteCalculated = () => {
